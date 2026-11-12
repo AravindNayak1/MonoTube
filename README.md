@@ -22,7 +22,7 @@ else starts. No home feed, no Shorts, no autoplay, no end-screen video wall, few
 
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Install (Load unpacked)](#install-load-unpacked)
+- [Install](#install)
 - [Development](#development)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
@@ -77,10 +77,36 @@ else starts. No home feed, no Shorts, no autoplay, no end-screen video wall, few
 
 ---
 
-## Install (Load unpacked)
+## Install
 
-Requirements: Google Chrome or Microsoft Edge 116+, and Node.js 22.18+ (24 recommended) to build. The build
-script imports TypeScript directly, which needs Node's built-in type stripping.
+MonoTube isn't in the Chrome Web Store yet, so it's installed as an unpacked extension. It takes about a
+minute and works in Google Chrome and Microsoft Edge (version 116 or newer).
+
+### Option A: download (no coding needed)
+
+1. Go to the [**latest release**](https://github.com/AravindNayak1/MonoTube/releases/latest) and download
+   **`monotube-1.0.0.zip`** under *Assets*.
+2. Unzip it. Right-click the file → **Extract All…** on Windows, or double-click it on macOS. Keep the
+   extracted folder somewhere permanent, such as `Documents\MonoTube`: Chrome loads the extension from that
+   folder every time it starts, so don't delete it.
+3. Open `chrome://extensions` (in Edge: `edge://extensions`).
+4. Turn on **Developer mode** (top-right toggle; in Edge it's in the left sidebar).
+5. Click **Load unpacked** and select the extracted folder (the one containing `manifest.json`).
+6. Open <https://www.youtube.com/>. You should see the MonoTube homepage. Reload any YouTube tab that was
+   already open.
+7. Optional: click the puzzle-piece icon in the toolbar and pin **MonoTube** to reach its settings.
+
+**Updating:** download the new release, replace the contents of your MonoTube folder with it, then click ↻
+(Reload) on the MonoTube card in `chrome://extensions`. Your settings are kept.
+
+> Chrome may show a notice about extensions in developer mode. That's normal for extensions installed this
+> way. To remove MonoTube, click **Remove** on its card in `chrome://extensions`. Click
+> **Restore original YouTube** in its popup first, so YouTube's Autoplay and theme go back to how you had them.
+
+### Option B: build from source
+
+Requirements: Node.js 22.18+ (24 recommended). The build script imports TypeScript directly, which needs Node's
+built-in type stripping.
 
 ```bash
 npm install
@@ -90,14 +116,7 @@ npm install
 npm run build
 ```
 
-Then:
-
-1. Open `chrome://extensions` (Edge: `edge://extensions`).
-2. Enable **Developer mode** (top-right toggle; in Edge, left sidebar).
-3. Click **Load unpacked**.
-4. Select the **`dist`** folder inside this project.
-5. Open <https://www.youtube.com/> (reload any YouTube tab that was already open — extensions are not injected into tabs that were open before installation).
-6. You should see the MonoTube homepage. Pin the MonoTube icon to the toolbar to reach the settings popup.
+Then follow steps 3–7 above, selecting the **`dist`** folder this creates.
 
 > On the first YouTube page load after installing (or after changing the theme), the page may reload once so
 > YouTube can render in the MonoTube theme. See [Themes](#themes-and-youtubes-own-appearance).
