@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+/**
+ * Generates MonoTube's icons from the logo geometry in src/shared/brand.ts, so the toolbar icon,
+ * the store icon and the in-page logo can never drift apart.
+ *
+ *   node scripts/generate-icons.mjs        (npm run icons)
+ *
+ * Writes to public/icons/:
+ *   logo.svg        full-colour app icon: dark squircle, inner hairline, light play triangle
+ *   logo-mark.svg   monochrome mark (currentColor, triangle cut out with fill-rule="evenodd")
+ *   icon-16/32/48/128.png   the app icon rasterised on a transparent background
+ *
+ * Rasterising uses Playwright driving the locally installed Google Chrome (channel "chrome"),
+ * so the PNGs are anti-aliased by the same Skia renderer that draws the SVG everywhere else.
+ */
+
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+// Node 24 strips the (erasable) TypeScript types on import.
+import { LOGO, LOGO_MARK_PATH } from '../src/shared/brand.ts';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const outDir = resolve(root, 'public/icons');
+
+/** App-icon colours (same values as the light theme's --mt-logo-bg / --mt-logo-fg). */
+const ICON_BG = '#111114';
+const ICON_FG = '#fafaf9';
+/**
+ * Inner hairline (rgba(255,255,255,.08)) that keeps the dark squircle visible on dark browser
+ * toolbars. Written as colour + opacity because some SVG renderers reject rgba() attributes.
+ */
+const ICON_HAIRLINE = { color: '#ffffff', opacity: 0.08 };
+
+/** Logo grid size (LOGO.viewBox is "0 0 64 64"); the squircle is centred on (32, 32). */
+const GRID = 64;
+
+/**
+ * Raster sizes. At 16 px the brand triangle would be ~6×5 px and blur into the squircle, so it
+ * is enlarged at the smallest sizes (scaled about the centre to stay optically centred). Where
+ * the triangle's vertical left edge would straddle two pixel columns it is nudged by < 0.5 px
+ * onto a whole pixel, which keeps that edge crisp instead of a grey smear.
+ */
+const RASTERS = [
+  { size: 16, playScale: 1.25, snapLeftEdge: true },
+  { size: 32, playScale: 1.08, snapLeftEdge: true },
+  { size: 48, playScale: 1, snapLeftEdge: true },
+  { size: 128, playScale: 1, snapLeftEdge: false },
+];
+
+/**
+ * Smallest x of a path written only with absolute x,y-pair commands (M L Q C S T Z), control
+ * points included; null when the path uses anything else (pixel snapping is then skipped).
+ */
+function pathMinX(d) {
+  if (/[^MLQCSTZ\d\s.,-]/.test(d)) return null;
+  const numbers = (d.match(/-?(?:\d+\.?\d*|\.\d+)/g) ?? []).map(Number);
+  const xs = numbers.filter((_, i) => i % 2 === 0);
+  return xs.length ? Math.min(...xs) : null;
+}
+
+const PLAY_MIN_X = pathMinX(LOGO.play);
+
+/** SVG transform for the play triangle: scale about the centre, then an optional x nudge. */
+function playTransform(size, scale, snapLeftEdge) {
+  let dx = 0;
+  if (snapLeftEdge && PLAY_MIN_X !== null) {
+    const unitsPerPx = GRID / size;
+    const leftPx = (32 + (PLAY_MIN_X - 32) * scale) / unitsPerPx;
+    dx = round((Math.round(leftPx) - leftPx) * unitsPerPx);
+  }
+  if (scale === 1 && dx === 0) return '';
+  return ` transform="translate(${round(32 + dx)} 32) scale(${scale}) translate(-32 -32)"`;
+}
+
+/**
+ * Full-colour app icon.
+ * @param {object} opts
+ * @param {number} opts.size           rendered width/height in px
+ * @param {number} opts.playScale      triangle scale factor (1 = brand geometry)
+ * @param {boolean} opts.snapLeftEdge  align the triangle's left edge to the pixel grid
+ * @param {number} opts.hairlinePx     inner hairline thickness in rendered px
+ */
+function appIconSvg({ size, playScale, snapLeftEdge, hairlinePx }) {
+  // The stroke is centred on the outline and clipped to the squircle, so only its inner half
+  // shows: a stroke of 2·hairline (in grid units) leaves exactly `hairlinePx` visible pixels.
+  const stroke = round((2 * hairlinePx * GRID) / size);
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO.viewBox}" width="${size}" height="${size}">`,
+    `  <defs><clipPath id="mt-squircle"><path d="${LOGO.squircle}"/></clipPath></defs>`,
+    `  <path d="${LOGO.squircle}" fill="${ICON_BG}"/>`,
+    `  <path d="${LOGO.squircle}" fill="none" stroke="${ICON_HAIRLINE.color}" stroke-opacity="${ICON_HAIRLINE.opacity}" stroke-width="${stroke}" clip-path="url(#mt-squircle)"/>`,
+    `  <path d="${LOGO.play}" fill="${ICON_FG}"${playTransform(size, playScale, snapLeftEdge)}/>`,
+    `</svg>`,
+  ].join('\n');
+}
+
+/** Monochrome mark that inherits the surrounding text colour when inlined. */
+function markSvg() {
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO.viewBox}" width="64" height="64" fill="currentColor">`,
+    `  <path fill-rule="evenodd" d="${LOGO_MARK_PATH}"/>`,
+    `</svg>`,
+  ].join('\n');
+}
+
+const GENERATED_NOTE = '<!-- Generated by scripts/generate-icons.mjs from src/shared/brand.ts. Do not edit. -->';
+
+function round(n) {
+  return Math.round(n * 1000) / 1000;
+}
+
+/** Width and height from a PNG's IHDR chunk, to assert the screenshots have the exact size. */
+function pngSize(buf) {
+  const signature = '89504e470d0a1a0a';
+  if (buf.subarray(0, 8).toString('hex') !== signature) throw new Error('not a PNG');
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+async function rasterize() {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  try {
+    // A viewport larger than any icon; each icon is clipped out of the top-left corner.
+    const page = await browser.newPage({ viewport: { width: 256, height: 256 }, deviceScaleFactor: 1 });
+    for (const { size, playScale, snapLeftEdge } of RASTERS) {
+      const svg = appIconSvg({ size, playScale, snapLeftEdge, hairlinePx: 1 });
+      await page.setContent(
+        `<!doctype html><html><head><style>html,body{margin:0;padding:0;background:transparent}svg{display:block}</style></head><body>${svg}</body></html>`,
+      );
+      const file = resolve(outDir, `icon-${size}.png`);
+      await page.screenshot({ path: file, omitBackground: true, clip: { x: 0, y: 0, width: size, height: size } });
+      const actual = pngSize(await readFile(file));
+      if (actual.width !== size || actual.height !== size) {
+        throw new Error(`${file} is ${actual.width}×${actual.height}, expected ${size}×${size}`);
+      }
+      console.log(`  ${relative(root, file).replaceAll('\\', '/')}  ${size}×${size}`);
+    }
+  } finally {
+    await browser.close();
+  }
+}
+
+async function main() {
+  await mkdir(outDir, { recursive: true });
+
+  // Vector assets: 1 px hairline when displayed at 128 px.
+  const logo = appIconSvg({ size: 128, playScale: 1, snapLeftEdge: false, hairlinePx: 1 });
+  await writeFile(resolve(outDir, 'logo.svg'), `${GENERATED_NOTE}\n${logo}\n`);
+  await writeFile(resolve(outDir, 'logo-mark.svg'), `${GENERATED_NOTE}\n${markSvg()}\n`);
+  console.log('  public/icons/logo.svg\n  public/icons/logo-mark.svg');
+
+  await rasterize();
+  console.log('MonoTube icons generated.');
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 23.6+ is needed: scripts/build.mjs imports src/manifest.ts with native type stripping.
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      # The unpacked extension, ready for chrome://extensions → Load unpacked.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monotube-dist
+          path: dist/
+          if-no-files-found: error
+
+  # The end-to-end suite (npm run test:e2e) drives real Chrome against live youtube.com, so it is
+  # run locally rather than in CI (see README → Testing).

@@ -1,0 +1,176 @@
+/*
+ * MonoTube navigation pill. Lives in its own shadow root on a host inserted into YouTube's
+ * masthead (ytd-masthead #start), or, as a fallback, floating in the UiRoot "nav" layer.
+ * Tokens (--mt-*) are declared on .mt by themedTokensCss('.mt') in a sibling <style>.
+ * Avoid rem units: YouTube sets html { font-size: 10px }.
+ */
+
+/* The pill shares the masthead row with YouTube's search box, which matters more: the pill may
+   shrink (the query label ellipsizes), and below the breakpoints at the end of this file it drops
+   the wordmark and then the query text before the search input gets narrow. */
+:host {
+  all: initial;
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  height: 40px;
+  margin: 0 16px 0 0;
+}
+/* Fallback placement: fixed nav layer, aligned like the masthead slot (56px bar, 16px gutter). */
+:host([data-floating]) {
+  position: relative;
+  margin: 8px 0 0 16px;
+  pointer-events: auto;
+}
+
+.mt {
+  display: inline-flex;
+  min-width: 0;
+  font-family: var(--mt-font);
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--mt-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.mt *,
+.mt *::before,
+.mt *::after {
+  box-sizing: border-box;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 2px;
+  height: 40px;
+  padding: 4px;
+  border: 1px solid var(--mt-border);
+  border-radius: 999px;
+  background: var(--mt-bg-elevated);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  margin: 0;
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mt-text);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    transform 150ms ease-out;
+}
+.btn:hover {
+  background: var(--mt-surface-hover);
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--mt-focus);
+  outline-offset: 1px;
+}
+.btn svg {
+  flex: none;
+}
+
+.wordmark {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--mt-border-strong);
+}
+
+.btn--home {
+  flex: none;
+}
+
+.btn--back {
+  min-width: 0;
+  gap: 6px;
+  padding: 0 12px 0 8px;
+  color: var(--mt-text-2);
+  font-size: 13px;
+}
+.btn--back:hover {
+  color: var(--mt-text);
+}
+.query {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mid widths with "Back to results" shown: drop the wordmark (visually only: the home button keeps
+   its aria-label / title) and let the query label shrink with the window, so YouTube's search
+   input keeps roughly 300px. */
+@media (max-width: 1099px) {
+  .pill:has(> .btn--back) .btn--home {
+    padding: 0 6px;
+  }
+  .pill:has(> .btn--back) .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .query {
+    max-width: clamp(48px, calc(100vw - 840px), 220px);
+  }
+}
+
+/* Narrow: the back button becomes icon-only (its aria-label / title still name the query). */
+@media (max-width: 900px) {
+  :host {
+    margin-right: 8px;
+  }
+  .query {
+    display: none;
+  }
+  .btn--back {
+    gap: 0;
+    padding: 0 7px;
+  }
+}
+
+/* Compact masthead: keep the mark, drop the wordmark. */
+@media (max-width: 720px) {
+  .btn--home {
+    padding: 0 6px;
+  }
+  .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}

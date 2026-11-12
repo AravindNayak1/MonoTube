@@ -1,0 +1,253 @@
+/*
+ * MonoTube page stylesheet.
+ *
+ * Injected into YouTube at document_start (before YouTube renders anything), so distractions are
+ * never painted. Every rule is gated on attributes MonoTube sets on <html> (see ATTR in
+ * src/shared/constants.ts). Toggling a setting flips one attribute: the change is instant, needs
+ * no DOM scanning, and disabling MonoTube removes the attributes so nothing here matches.
+ *
+ *   data-mt            MonoTube enabled            data-mt-page   home|explore|search|watch|shorts|channel|feed|other
+ *   data-mt-recs       block recommendations       data-mt-playlist  watch page is part of a playlist
+ *   data-mt-shorts     block Shorts                data-mt-overlay   MonoTube homepage overlay visible
+ *   data-mt-endscreen  hide end screens            data-mt-more      user asked for one more page of results
+ *   data-mt-ads        ad & tracker filtering      data-mt-comments  hide comments
+ *
+ * Selectors verified against YouTube desktop markup (Nov 2026). Older/alternative element names
+ * are kept alongside current ones so a partial YouTube redesign degrades gracefully.
+ */
+
+/* ───────────────────────── Masthead: MonoTube brand instead of YouTube's ───────────────────── */
+
+html[data-mt] ytd-masthead ytd-topbar-logo-renderer#logo,
+html[data-mt] ytd-masthead #voice-search-button {
+  display: none !important;
+}
+
+/* ───────────────────────── Homepage overlay ───────────────────────────────────────────────── */
+
+html[data-mt-overlay] body {
+  overflow: hidden !important;
+}
+html[data-mt-overlay] ytd-app {
+  visibility: hidden !important;
+}
+
+/* ───────────────────────── Recommendations ─────────────────────────────────────────────────── */
+
+/* Algorithmic feeds: home, trending/explore. Never rendered (no thumbnails are even loaded). */
+html[data-mt][data-mt-recs] ytd-browse[page-subtype="home"],
+html[data-mt][data-mt-recs] ytd-browse[page-subtype="trending"],
+html[data-mt][data-mt-recs] ytd-browse[page-subtype="explore"] {
+  display: none !important;
+}
+
+/* The guide (sidebar) is a browsing surface: Shorts, Explore, Trending, Music, Gaming… */
+html[data-mt][data-mt-recs] ytd-masthead #guide-button,
+html[data-mt][data-mt-recs] tp-yt-app-drawer#guide,
+html[data-mt][data-mt-recs] ytd-mini-guide-renderer {
+  display: none !important;
+}
+html[data-mt][data-mt-recs] ytd-app ytd-page-manager#page-manager,
+html[data-mt][data-mt-recs] ytd-app[guide-persistent-and-visible] ytd-page-manager,
+html[data-mt][data-mt-recs] ytd-app[mini-guide-visible] ytd-page-manager {
+  margin-left: 0 !important;
+}
+
+/* Search results: keep genuine results, drop shelves YouTube mixes in.
+   Mixes (auto-generated "radio" lists, list=RD…) are recommendation feeds: the current markup is a
+   yt-lockup-view-model with a collection thumbnail and a list=RD link (real playlists use list=PL…
+   and stay). An artist's yt-official-card-view-model keeps its channel header but loses the
+   carousel of Mix-linked videos and the header's "Mix" action. */
+html[data-mt][data-mt-recs] ytd-search ytd-shelf-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-rich-shelf-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-item-section-renderer > #contents > ytd-horizontal-card-list-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-search-refinement-card-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-secondary-search-container-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-universal-watch-card-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-radio-renderer,
+html[data-mt][data-mt-recs] ytd-search ytd-mix-renderer,
+html[data-mt][data-mt-recs] ytd-search yt-lockup-view-model:has(yt-collection-thumbnail-view-model):has(a[href*="list=RD"]),
+html[data-mt][data-mt-recs] ytd-search yt-official-card-view-model > :has(> horizontal-shelf-view-model),
+html[data-mt][data-mt-recs] ytd-search yt-official-card-view-model horizontal-shelf-view-model,
+html[data-mt][data-mt-recs] ytd-search yt-official-card-view-model yt-flexible-actions-view-model > :has(a[href*="list=RD"]) {
+  display: none !important;
+}
+
+/* No infinite scroll: the continuation trigger stays hidden (so it never intersects the viewport)
+   until the user explicitly asks for more results. */
+html[data-mt][data-mt-recs]:not([data-mt-more]) ytd-search ytd-section-list-renderer > #contents > ytd-continuation-item-renderer {
+  display: none !important;
+}
+
+/* Watch page: related / up-next sidebar (and its below-player variant in narrow layouts). */
+html[data-mt][data-mt-recs] ytd-watch-flexy #related,
+html[data-mt][data-mt-recs] ytd-watch-next-secondary-results-renderer,
+html[data-mt][data-mt-recs] ytd-watch-flexy #below ytd-item-section-renderer[section-identifier="watch-next-feed"] {
+  display: none !important;
+}
+
+/* A Mix (list=RD…, start_radio=1) is not a playlist the user chose: its queue panel is an endless
+   list of recommendations. Real playlists (data-mt-playlist) keep theirs. */
+html[data-mt][data-mt-recs][data-mt-page="watch"]:not([data-mt-playlist]) ytd-watch-flexy ytd-playlist-panel-renderer {
+  display: none !important;
+}
+
+/* Collapse the sidebar column unless it holds something the user chose and can see: the playlist
+   (real playlists only), a live chat that is shown (a past stream's chat replay sits there with
+   hide-chat-frame until the user opens it), or an open panel (transcript, chapters, description).
+   Panels MonoTube hides itself (the ads companion and "Products" panels under ad filtering) don't
+   count, or they would leave an empty column. One selector per combination of states. */
+html[data-mt][data-mt-recs][data-mt-page="watch"]:not([data-mt-playlist]) ytd-watch-flexy #secondary.ytd-watch-flexy:not(:has(
+    #chat-container ytd-live-chat-frame:not([hide-chat-frame]),
+    ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]
+  )),
+html[data-mt][data-mt-recs][data-mt-page="watch"][data-mt-ads]:not([data-mt-playlist]) ytd-watch-flexy #secondary.ytd-watch-flexy:not(:has(
+    #chat-container ytd-live-chat-frame:not([hide-chat-frame]),
+    ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]:not([target-id^="engagement-panel-ads"]):not([target-id^="shopping_panel"])
+  )),
+html[data-mt][data-mt-recs][data-mt-page="watch"][data-mt-playlist] ytd-watch-flexy #secondary.ytd-watch-flexy:not(:has(
+    ytd-playlist-panel-renderer:not([hidden]),
+    #chat-container ytd-live-chat-frame:not([hide-chat-frame]),
+    ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]
+  )),
+html[data-mt][data-mt-recs][data-mt-page="watch"][data-mt-ads][data-mt-playlist] ytd-watch-flexy #secondary.ytd-watch-flexy:not(:has(
+    ytd-playlist-panel-renderer:not([hidden]),
+    #chat-container ytd-live-chat-frame:not([hide-chat-frame]),
+    ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]:not([target-id^="engagement-panel-ads"]):not([target-id^="shopping_panel"])
+  )) {
+  display: none !important;
+}
+
+/* Centre the player and size it so the title stays visible without scrolling. The padding keeps
+   YouTube's 16px left gutter when there is no spare width to centre into (narrow windows, or a
+   playlist / chat beside the video); with spare width it balances #primary's 16px padding-right,
+   so the player is exactly centred. The ambient-mode glow (#cinematics) is ~1.3x the player's
+   width, so around the larger, centred player it would spill past the window and add a horizontal
+   scrollbar: clip it at the window edges (clip is not a scroll container; vertical is untouched). */
+html[data-mt][data-mt-recs][data-mt-page="watch"] ytd-watch-flexy:not([theater]):not([fullscreen]) #columns.ytd-watch-flexy {
+  justify-content: center !important;
+  padding-left: var(--ytd-margin-4x, 16px) !important;
+  overflow-x: clip !important;
+}
+html[data-mt][data-mt-recs][data-mt-page="watch"] ytd-watch-flexy:not([theater]):not([fullscreen]) #primary.ytd-watch-flexy {
+  max-width: min(1600px, max(640px, calc((100vh - 190px) * 16 / 9))) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Player "Next" button points at a recommendation unless you're in a playlist. */
+html[data-mt][data-mt-recs]:not([data-mt-playlist]) #movie_player .ytp-next-button {
+  display: none !important;
+}
+
+/* Fullscreen "scroll for more videos" grid. */
+html[data-mt][data-mt-recs] #movie_player .ytp-fullscreen-grid,
+html[data-mt][data-mt-recs] #movie_player .ytp-fullerscreen-edu-button {
+  display: none !important;
+}
+
+/* ───────────────────────── Shorts ─────────────────────────────────────────────────────────── */
+
+html[data-mt][data-mt-shorts] ytd-reel-shelf-renderer,
+html[data-mt][data-mt-shorts] ytd-rich-shelf-renderer[is-shorts],
+html[data-mt][data-mt-shorts] ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+html[data-mt][data-mt-shorts] grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] ytm-shorts-lockup-view-model,
+html[data-mt][data-mt-shorts] ytm-shorts-lockup-view-model-v2,
+html[data-mt][data-mt-shorts] ytd-video-renderer:has(a#thumbnail[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] ytd-grid-video-renderer:has(a#thumbnail[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] ytd-compact-video-renderer:has(a[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] yt-lockup-view-model:has(a[href^="/shorts/"]),
+html[data-mt][data-mt-shorts] ytd-guide-entry-renderer:has(> a[title="Shorts"]),
+html[data-mt][data-mt-shorts] ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+html[data-mt][data-mt-shorts] yt-tab-shape[tab-title="Shorts"] {
+  display: none !important;
+}
+
+/* The Shorts player itself never shows; the Shorts module renders a notice on top. */
+html[data-mt][data-mt-shorts][data-mt-page="shorts"] ytd-app {
+  visibility: hidden !important;
+}
+
+/* ───────────────────────── End screens & cards ────────────────────────────────────────────── */
+
+html[data-mt][data-mt-endscreen] #movie_player .ytp-ce-element,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-endscreen-content,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-endscreen-previous,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-endscreen-next,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-videowall-still,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-modern-videowall-still,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-suggestion-set,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-pause-overlay,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-cards-teaser,
+html[data-mt][data-mt-endscreen] #movie_player .ytp-cards-button,
+html[data-mt][data-mt-endscreen] #movie_player .iv-promo {
+  display: none !important;
+}
+
+/* ───────────────────────── Comments ───────────────────────────────────────────────────────── */
+
+html[data-mt][data-mt-comments] ytd-watch-flexy #comments,
+html[data-mt][data-mt-comments] ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"] {
+  display: none !important;
+}
+
+/* ───────────────────────── Ads & promotions (cosmetic) ───────────────────────────────────── */
+
+html[data-mt][data-mt-ads] ytd-ad-slot-renderer,
+html[data-mt][data-mt-ads] ad-slot-renderer,
+html[data-mt][data-mt-ads] ytd-in-feed-ad-layout-renderer,
+html[data-mt][data-mt-ads] ytd-promoted-sparkles-web-renderer,
+html[data-mt][data-mt-ads] ytd-promoted-sparkles-text-search-renderer,
+html[data-mt][data-mt-ads] ytd-promoted-video-renderer,
+html[data-mt][data-mt-ads] ytd-compact-promoted-video-renderer,
+html[data-mt][data-mt-ads] ytd-display-ad-renderer,
+html[data-mt][data-mt-ads] ytd-search-pyv-renderer,
+html[data-mt][data-mt-ads] ytd-action-companion-ad-renderer,
+html[data-mt][data-mt-ads] ytd-companion-slot-renderer,
+html[data-mt][data-mt-ads] ytd-player-legacy-desktop-watch-ads-renderer,
+html[data-mt][data-mt-ads] ytd-video-masthead-ad-v3-renderer,
+html[data-mt][data-mt-ads] ytd-banner-promo-renderer,
+html[data-mt][data-mt-ads] ytd-statement-banner-renderer,
+html[data-mt][data-mt-ads] ytd-primetime-promo-renderer,
+html[data-mt][data-mt-ads] ytd-brand-video-singleton-renderer,
+html[data-mt][data-mt-ads] ytd-brand-video-shelf-renderer,
+html[data-mt][data-mt-ads] ytd-merch-shelf-renderer,
+html[data-mt][data-mt-ads] ytd-mealbar-promo-renderer,
+html[data-mt][data-mt-ads] yt-mealbar-promo-renderer,
+html[data-mt][data-mt-ads] ytd-ads-engagement-panel-content-renderer,
+html[data-mt][data-mt-ads] ytd-engagement-panel-section-list-renderer[target-id^="engagement-panel-ads"],
+html[data-mt][data-mt-ads] ytd-engagement-panel-section-list-renderer[target-id^="shopping_panel"],
+html[data-mt][data-mt-ads] ytd-rich-item-renderer:has(> #content > ytd-ad-slot-renderer),
+html[data-mt][data-mt-ads] ytd-item-section-renderer:has(> #contents > ytd-ad-slot-renderer:only-child),
+html[data-mt][data-mt-ads] #masthead-ad,
+html[data-mt][data-mt-ads] ytd-watch-flexy #player-ads,
+html[data-mt][data-mt-ads] ytd-watch-flexy #shopping-timely-shelf,
+html[data-mt][data-mt-ads] ytd-watch-flexy #ticket-shelf,
+html[data-mt][data-mt-ads] #movie_player .ytp-ad-overlay-container,
+html[data-mt][data-mt-ads] #movie_player .ytp-ad-overlay-slot,
+html[data-mt][data-mt-ads] #movie_player .ytp-featured-product,
+html[data-mt][data-mt-ads] #movie_player .ytp-suggested-action {
+  display: none !important;
+}
+
+/* In-stream video ads: the Ad module mutes and fast-forwards them; hide the picture meanwhile.
+   The ad's own controls (skip button, progress) stay above this cover and remain clickable. */
+html[data-mt][data-mt-ads] #movie_player.ad-showing .html5-video-container {
+  opacity: 0 !important;
+}
+html[data-mt][data-mt-ads] #movie_player.ad-showing::after {
+  content: "Ad detected \00B7  fast-forwarding";
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: rgba(255, 255, 255, 0.7);
+  font: 500 14px/1.2 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}

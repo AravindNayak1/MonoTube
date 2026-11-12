@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "regexSubstitution": "https://www.youtube.com/?mt_shorts=\\1" }
+    },
+    "condition": {
+      "regexFilter": "^https://www\\.youtube\\.com/shorts/([A-Za-z0-9_-]{6,})(?:[/?#].*)?$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "url": "https://www.youtube.com/" }
+    },
+    "condition": {
+      "regexFilter": "^https://www\\.youtube\\.com/shorts/?(\\?.*)?$",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

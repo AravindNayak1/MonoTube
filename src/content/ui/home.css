@@ -1,0 +1,467 @@
+/*
+ * MonoTube homepage overlay. Rendered inside the UiRoot shadow root (overlay layer), themed by
+ * the --mt-* tokens of the .mt wrapper. Avoid rem units: YouTube sets html { font-size: 10px }.
+ *
+ * The background is opaque from the first frame; only the content fades/slides in (160ms).
+ */
+
+.home {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  color: var(--mt-text);
+  background-color: var(--mt-bg);
+  /* Two faint, static glows give depth without a visible gradient. */
+  background-image:
+    radial-gradient(ellipse 820px 460px at 50% 40%, color-mix(in srgb, var(--mt-glow-1) 75%, transparent), transparent 72%),
+    radial-gradient(ellipse 640px 420px at 82% 88%, var(--mt-glow-2), transparent 72%);
+  background-repeat: no-repeat;
+  color-scheme: dark;
+}
+.mt[data-theme="light"] .home {
+  color-scheme: light;
+}
+
+.home > * {
+  animation: mt-home-in 160ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Header: brand lockup at the exact spot the nav pill occupies on other pages ─────────── */
+
+.home__header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+}
+.home__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  /* 1px border + 4px padding + 6px button padding of the nav pill = 11px. */
+  padding: 0 12px 0 11px;
+  color: var(--mt-text);
+  user-select: none;
+}
+.home__brand svg {
+  flex: none;
+}
+.home__wordmark {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* ── Main ────────────────────────────────────────────────────────────────────────────────── */
+
+.home__main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px 64px;
+}
+.home__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  /* Wide enough for the headline on one line; the search column itself is narrower. */
+  max-width: 760px;
+  text-align: center;
+}
+.home__content > .mt-notice,
+.search {
+  max-width: 640px;
+}
+.home__content > .mt-notice {
+  margin-bottom: 40px;
+}
+
+/* Waveform: thin bars breathing at slightly different tempos. Transform-only animation, so it
+   runs on the compositor; static (mid-height) when reduced motion is requested. */
+.wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 48px;
+  margin-bottom: 32px;
+}
+.wave__bar {
+  flex: none;
+  width: 3px;
+  height: calc(var(--h, 0.5) * 48px);
+  border-radius: 3px;
+  background: var(--mt-text);
+  opacity: var(--o, 0.4);
+  transform-origin: 50% 50%;
+  animation: mt-wave var(--t, 2.4s) cubic-bezier(0.45, 0, 0.55, 1) var(--d, 0s) infinite alternate;
+}
+/* While the Shorts notice is shown, it takes the visual's place. */
+.home__content[data-notice] .wave {
+  display: none;
+}
+
+.home__title {
+  margin: 0 0 32px;
+  max-width: 100%;
+  font-size: clamp(28px, 1.9vw + 18px, 44px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--mt-text);
+  text-wrap: balance;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────────────────────── */
+
+.search {
+  width: 100%;
+  margin: 0;
+}
+.search__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  padding: 0 8px 0 22px;
+  border: 1px solid var(--mt-border-strong);
+  border-radius: 16px;
+  background: var(--mt-surface);
+  box-shadow: var(--mt-shadow);
+  cursor: text;
+  transition:
+    border-color 160ms ease-out,
+    box-shadow 160ms ease-out,
+    background-color 160ms ease-out;
+}
+/* The border carries the focus cue (>= 3:1 against surface and bg in both themes); the soft
+   halo only adds warmth. */
+.search__field:focus-within {
+  border-color: color-mix(in srgb, var(--mt-focus) 70%, var(--mt-border-strong));
+  box-shadow:
+    0 0 0 4px var(--mt-accent-soft),
+    var(--mt-shadow);
+}
+
+.search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--mt-text);
+  font: 400 18px/1.2 var(--mt-font);
+  letter-spacing: -0.01em;
+  caret-color: var(--mt-accent);
+  appearance: none;
+}
+.search__input::placeholder {
+  color: var(--mt-text-3);
+  opacity: 1;
+}
+.search__input::-webkit-search-cancel-button,
+.search__input::-webkit-search-decoration {
+  appearance: none;
+  display: none;
+}
+/* The field shows its own focus ring (focus-within), so the input needs none. */
+.mt .search__input:focus-visible {
+  outline: none;
+}
+
+.search__hint {
+  flex: none;
+  transition: opacity 120ms ease-out;
+}
+.search__input:focus ~ .search__hint,
+.search__input:not(:placeholder-shown) ~ .search__hint {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.mt .search__submit {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  /* Same fill as every other filled accent button, so the overlay reads as one system. */
+  background: var(--mt-accent-fill);
+  color: var(--mt-on-accent);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+.mt .search__submit:hover {
+  background: var(--mt-accent-fill-hover);
+}
+.mt .search__submit:active {
+  transform: scale(0.96);
+}
+.mt .search__submit:focus-visible {
+  outline: 2px solid var(--mt-focus);
+  outline-offset: 2px;
+}
+.mt .search__submit > svg,
+.mt .search__submit::after {
+  grid-area: 1 / 1;
+}
+.mt .search__submit > svg {
+  transition: opacity 120ms ease-out;
+}
+/* Pending: the icon gives way to a small spinner until YouTube's results page takes over. */
+.mt .search__submit[aria-busy="true"] {
+  cursor: progress;
+}
+.mt .search__submit[aria-busy="true"] > svg {
+  opacity: 0;
+}
+.mt .search__submit[aria-busy="true"]::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mt-spin 700ms linear infinite;
+}
+
+/* ── Keyboard hints ──────────────────────────────────────────────────────────────────────── */
+
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--mt-border-strong);
+  border-radius: 6px;
+  background: var(--mt-bg-elevated);
+  color: var(--mt-text-2);
+  font: 500 11.5px/1 var(--mt-mono);
+}
+.search__hint.kbd {
+  min-width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  border-radius: 7px;
+  color: var(--mt-text-3);
+}
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--mt-text-3);
+  font-size: 12.5px;
+  line-height: 22px;
+}
+.hints__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.hints__keys {
+  display: inline-flex;
+  gap: 3px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────────────────── */
+
+.home__footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 16px 24px 20px;
+  color: var(--mt-text-3);
+  font-size: 13px;
+}
+.home__tagline {
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.library {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.library__label {
+  margin-right: 6px;
+}
+.library__link {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--mt-text-2);
+  text-decoration: none;
+  transition:
+    color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+.library__link:hover {
+  color: var(--mt-text);
+  background: var(--mt-surface-hover);
+}
+.mt .library__link:focus-visible {
+  outline: 2px solid var(--mt-focus);
+  outline-offset: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .home__footer {
+    flex-direction: column-reverse;
+    justify-content: center;
+    text-align: center;
+  }
+  .library {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .home__main {
+    padding: 24px 16px 48px;
+  }
+  .wave {
+    margin-bottom: 24px;
+  }
+  .home__title {
+    margin-bottom: 24px;
+  }
+  .search__field {
+    height: 56px;
+    padding-left: 16px;
+    border-radius: 14px;
+  }
+  .search__input {
+    font-size: 16px;
+  }
+  .mt .search__submit {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  /* Touch-first widths: the inline "/" hint is noise there. */
+  .search__hint {
+    display: none;
+  }
+  .hints {
+    gap: 8px 14px;
+  }
+  .library__label {
+    flex-basis: 100%;
+    margin: 0 0 2px;
+  }
+}
+
+@media (max-height: 560px) {
+  .home__main {
+    padding-top: 16px;
+    padding-bottom: 32px;
+  }
+  .wave {
+    display: none;
+  }
+}
+
+/* Very large screens: scale the composition up a step instead of leaving a tiny island. */
+@media (min-width: 2400px) {
+  .home__content {
+    max-width: 960px;
+  }
+  .home__content > .mt-notice,
+  .search {
+    max-width: 760px;
+  }
+  .home__title {
+    font-size: 56px;
+  }
+  .search__field {
+    height: 68px;
+  }
+  .search__input {
+    font-size: 20px;
+  }
+  .mt .search__submit {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave__bar {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+  .mt .search__submit[aria-busy="true"]::after {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.6;
+  }
+}
+
+@keyframes mt-home-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mt-wave {
+  from {
+    transform: scaleY(0.34);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes mt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

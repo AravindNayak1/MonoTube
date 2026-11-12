@@ -1,0 +1,6 @@
+# Normalise line endings in the repository; check out text files with LF everywhere.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.ico binary

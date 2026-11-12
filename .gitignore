@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.dev-profile/
+.dev-profile-edge/
+test-results/
+playwright-report/
+coverage/
+*.log

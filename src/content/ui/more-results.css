@@ -1,0 +1,150 @@
+/*
+ * "Show more results" control on the search page.
+ * Lives in its own shadow root (host: [data-monotube="more-results"] inside YouTube's results list),
+ * so it is isolated from YouTube's styles. Tokens come from themedTokensCss('.mt').
+ */
+
+:host {
+  all: initial;
+  display: block;
+}
+
+.mt {
+  font-family: var(--mt-font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--mt-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.mt *,
+.mt *::before,
+.mt *::after {
+  box-sizing: border-box;
+}
+
+/* Hairline – button – hairline: a calm "end of this page" marker. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0 48px;
+}
+.row::before,
+.row::after {
+  content: "";
+  flex: 1 1 0;
+  min-width: 16px;
+  height: 1px;
+  background: var(--mt-border);
+}
+
+.more {
+  appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border: 1px solid var(--mt-border-strong);
+  border-radius: 10px;
+  background: var(--mt-surface);
+  color: var(--mt-text-2);
+  font: 500 14px/1 var(--mt-font);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out,
+    color 160ms ease-out,
+    transform 160ms ease-out;
+}
+.more:hover {
+  background: var(--mt-surface-hover);
+  color: var(--mt-text);
+}
+.more:active {
+  transform: translateY(1px);
+}
+.more:focus {
+  outline: none;
+}
+.more:focus-visible {
+  outline: 2px solid var(--mt-focus);
+  outline-offset: 2px;
+  color: var(--mt-text);
+}
+.more svg {
+  flex: none;
+  transition: transform 160ms ease-out;
+}
+.more:hover svg {
+  transform: translateY(1px);
+}
+
+/* Pending: YouTube is fetching the next batch. */
+.more[aria-busy="true"] {
+  cursor: progress;
+  color: var(--mt-text-3);
+  background: var(--mt-surface);
+  transform: none;
+}
+.more[aria-busy="true"] svg {
+  display: none;
+}
+.spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  animation: mt-spin 800ms linear infinite;
+}
+.more[aria-busy="true"] .spinner {
+  display: inline-block;
+}
+
+@keyframes mt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .row {
+    gap: 12px;
+    padding: 16px 0 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more,
+  .more svg {
+    transition: none;
+  }
+  .more:active,
+  .more:hover svg {
+    transform: none;
+  }
+  .spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.6;
+  }
+}
